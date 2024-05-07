@@ -2,6 +2,9 @@ from nicegui import ui, app
 import win32api
 import time
 import threading
+from win32api import GetMonitorInfo, MonitorFromPoint
+
+
 
 
 
@@ -46,9 +49,17 @@ def move_window(event, initial_window_pos, initial_mouse_pos):
 
         new_x = cursor_x - initial_mouse_pos[0]
         new_y = cursor_y - initial_mouse_pos[1]
+        
 
         app.native.main_window.move(initial_window_pos[0] + new_x, initial_window_pos[1] + new_y)
         time.sleep(0.01)
+
+def maximize_window():
+    monitor_info = GetMonitorInfo(MonitorFromPoint((0,0)))
+    work_area = monitor_info.get("Work")
+    app.native.main_window.resize(work_area[2], work_area[3])
+    time.sleep(0.1)
+    app.native.main_window.move(0, 0)
 
 #----------------------------------------------------
 #    Styling                                         |
@@ -66,6 +77,7 @@ with ui.header().classes(replace='row items-center bg-dark').style('padding-righ
         ui.tab('B')
         ui.tab('C')
     ui.space()
+    ui.button(on_click=maximize_window, icon='crop_square').props('flat color=white')
     ui.button(on_click=lambda: app.shutdown(), icon='close').props('flat color=red')
 
     # We assign the move event to the header
