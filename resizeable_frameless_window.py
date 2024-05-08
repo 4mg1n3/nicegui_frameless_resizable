@@ -4,15 +4,22 @@ import time
 import threading
 from win32api import GetMonitorInfo, MonitorFromPoint
 from functools import partial
+import asyncio
 
 class MaximizeButton(ui.button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._props['icon'] = 'zoom_in_map'
-        self._state = False
+        self._state = True
+
+    def on_click(self, callback):
+        def wrapper():
+            callback()
+            self.update()
+        super().on_click(wrapper)
 
     def update(self) -> None:
-        self.props('icon=zoom_out_map' if self._state else 'icon=zoom_in_map')
+        self._props['icon'] = 'zoom_out_map' if self._state else 'zoom_in_map'
         self._state = not self._state
         super().update()
 
@@ -83,13 +90,13 @@ class ResizableFramelessWindow:
         if abs(new_x) > 50 or abs(new_y) > 50:
             self.position = (initial_window_pos[0] + new_x, initial_window_pos[1] + new_y)
 
-    async def maximize_window(self):
-        self.position = await app.native.main_window.get_position()
+    def maximize_window(self):
         self.maximized = True
         self.on_off_resize()
         monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
         work_area = monitor_info.get("Work")
         app.native.main_window.resize(work_area[2], work_area[3])
+        print(work_area)
         time.sleep(0.05)
         app.native.main_window.move(0, 0)
 
@@ -110,6 +117,15 @@ class ResizableFramelessWindow:
             self.e_resize.style('pointer-events: all;')
             self.se_resize.style('pointer-events: all;')
 
+    async def get_position(self):
+        self.position = await app.native.main_window.get_position()
+
+    def toggle_resize(self):
+        asyncio.create_task(self.get_position())
+        if self.maximized:
+            self.restore_window()
+        else:
+            self.maximize_window()
 
     #-------------------------------------------------------------------------------------------------------------------
     #                                                      RUN                                                          |
@@ -122,7 +138,7 @@ class ResizableFramelessWindow:
 
         with ui.header().classes(replace='row items-center bg-dark').style('padding-right: 10px;') as header:
             ui.space()
-            MaximizeButton().on('click', lambda: self.maximize_window() if not self.maximized else self.restore_window())
+            MaximizeButton().on_click(self.toggle_resize)
             ui.button(on_click=lambda: app.shutdown(), icon='close').props('flat color=red')
 
             header.on('mousedown', self.on_drag_start_move)
