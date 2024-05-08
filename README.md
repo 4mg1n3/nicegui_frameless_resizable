@@ -1,4 +1,6 @@
-# Some info
+# Frameless resizable window with NiceGUI on windows
+
+## Some info
 
 ### What is this ?
 This project is just a quick work on the reimplementation of mouse resizability and movability for a NiceGUI frameless window on Windows.
