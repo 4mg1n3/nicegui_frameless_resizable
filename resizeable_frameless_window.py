@@ -11,6 +11,7 @@ class MaximizeButton(ui.button):
         super().__init__(*args, **kwargs)
         self._props['icon'] = 'zoom_in_map'
         self._state = True
+        self.props('flat color=white padding-right=10px')
 
     def on_click(self, callback):
         def wrapper():
