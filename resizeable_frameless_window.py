@@ -10,7 +10,7 @@ class MaximizeButton(ui.button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._props['icon'] = 'zoom_in_map'
-        self._state = True
+        self._state = False
         self.props('flat color=white padding-right=10px')
 
     def on_click(self, callback):
@@ -23,6 +23,7 @@ class MaximizeButton(ui.button):
         self._props['icon'] = 'zoom_out_map' if self._state else 'zoom_in_map'
         self._state = not self._state
         super().update()
+
 
 
 class ResizableFramelessWindow:
@@ -71,10 +72,13 @@ class ResizableFramelessWindow:
 
     async def on_drag_start_move(self, event):
         initial_window_pos = await app.native.main_window.get_position()
+        initial_window_size = await app.native.main_window.get_size()
         initial_mouse_pos = win32api.GetCursorPos()
-        threading.Thread(target=self.move_window, args=(event, initial_window_pos, initial_mouse_pos)).start()
+        threading.Thread(target=self.move_window, args=(event, initial_window_pos, initial_window_size, initial_mouse_pos)).start()
 
-    def move_window(self, event, initial_window_pos, initial_mouse_pos):
+    def move_window(self, event, initial_window_pos, initial_window_size,  initial_mouse_pos):
+        initial_window_pos2 = initial_window_pos
+        cursor_x_ratio = (initial_mouse_pos[0] - initial_window_pos[0]) / initial_window_size[0]
         while win32api.GetAsyncKeyState(0x01) < 0:
             cursor_x, cursor_y = win32api.GetCursorPos()
 
@@ -82,14 +86,17 @@ class ResizableFramelessWindow:
             new_y = cursor_y - initial_mouse_pos[1]
 
             if self.maximized:
-                if abs(new_x) > 25 or abs(new_y) > 25:
-                    self.restore_window()
-                    initial_window_pos = (self.position[0], cursor_y - new_y)
+                if abs(new_x) > 15 or abs(new_y) > 15:
+                    self.unmaximize_window()
+                    app.native.main_window.move(cursor_x - int(self.dimensions[0] * cursor_x_ratio), cursor_y - new_y)
+                    initial_window_pos = (cursor_x - int(self.dimensions[0] * cursor_x_ratio), cursor_y - new_y)
 
             app.native.main_window.move(initial_window_pos[0] + new_x, initial_window_pos[1] + new_y)
             time.sleep(0.01)
-        if abs(new_x) > 50 or abs(new_y) > 50:
+        if abs(new_x) > 25 or abs(new_y) > 25:
             self.position = (initial_window_pos[0] + new_x, initial_window_pos[1] + new_y)
+        if initial_window_pos[1] + new_y < 5 and abs(initial_window_pos[1] - initial_window_pos2[1] + new_y) > 20:
+            self.maximize_window()
 
     def maximize_window(self):
         self.maximized = True
@@ -97,9 +104,15 @@ class ResizableFramelessWindow:
         monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
         work_area = monitor_info.get("Work")
         app.native.main_window.resize(work_area[2], work_area[3])
-        print(work_area)
         time.sleep(0.05)
         app.native.main_window.move(0, 0)
+    
+    def unmaximize_window(self):
+        self.maximized = False
+        self.on_off_resize()
+        app.native.main_window.resize(self.dimensions[0], self.dimensions[1])
+        time.sleep(0.05)
+
 
     def restore_window(self):
         self.maximized = False
@@ -139,6 +152,7 @@ class ResizableFramelessWindow:
 
         with ui.header().classes(replace='row items-center bg-dark').style('padding-right: 10px;') as header:
             ui.space()
+            ui.button(on_click=lambda: app.native.main_window.minimize(), icon='remove').props('flat color=white')
             MaximizeButton().on_click(self.toggle_resize)
             ui.button(on_click=lambda: app.shutdown(), icon='close').props('flat color=red')
 
