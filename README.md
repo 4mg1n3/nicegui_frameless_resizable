@@ -14,4 +14,4 @@ There is also no resize function for the top and the left border but they are ea
 
 ---
 
-I hope this small repo can help people stuck on this, don't hesitate to star it for visibility ^_^
+I hope this small repo can help people stuck on this.
